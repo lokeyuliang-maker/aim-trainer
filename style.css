@@ -1,247 +1,220 @@
-const gameArea = document.getElementById('game-area');
-const target = document.getElementById('target');
-const startBtn = document.getElementById('start-btn');
-const scoreDisplay = document.getElementById('score');
-const timerDisplay = document.getElementById('timer');
-const coinsDisplay = document.getElementById('coins');
-const crosshair = document.getElementById('custom-crosshair');
-const modeSelect = document.getElementById('game-mode');
-const sizeSelect = document.getElementById('target-size');
-const bossBar = document.getElementById('boss-hp-bar');
-const bossHpInner = document.getElementById('boss-hp-inner');
-const shopButtons = document.querySelectorAll('.shop-item');
 
-// Game states
-let score = 0;
-let timeLeft = 30;
-let coins = 0;
-let gameInterval;
-let trackingInterval;
-let bossMoveInterval;
-let isPlaying = false;
-
-// Boss Mode Settings
-let bossMaxHp = 50;
-let bossCurrentHp = 50;
-
-// Shop Management System
-let unlockedSkins = ['default'];
-let equippedSkin = 'default';
-
-// Map size dropdowns to pixel dimensions
-const sizeMap = { small: 20, medium: 35, large: 55 };
-
-// Track custom crosshairs inside the container window
-gameArea.addEventListener('mousemove', (e) => {
-    const rect = gameArea.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    crosshair.style.left = x + 'px';
-    crosshair.style.top = y + 'px';
-});
-
-// Primary game initializing configuration
-function startGame() {
-    score = 0;
-    timeLeft = 30;
-    isPlaying = true;
-    scoreDisplay.textContent = score;
-    timerDisplay.textContent = timeLeft;
-    
-    startBtn.style.display = 'none';
-    target.style.display = 'block';
-    
-    clearInterval(gameInterval);
-    clearInterval(trackingInterval);
-    clearInterval(bossMoveInterval);
-    bossBar.style.display = 'none';
-
-    const selectedMode = modeSelect.value;
-    
-    // Size execution
-    let pixelSize = sizeMap[sizeSelect.value];
-    if (selectedMode === 'boss') {
-        pixelSize = 80; // Boss target size override
-        bossBar.style.display = 'block';
-        bossCurrentHp = bossMaxHp;
-        bossHpInner.style.width = '100%';
-        target.style.backgroundColor = '#ffcc00'; // Gold color variant for boss
-    } else {
-        target.style.backgroundColor = '#ff3366';
-    }
-    target.style.width = pixelSize + 'px';
-    target.style.height = pixelSize + 'px';
-
-    moveTarget();
-
-    // Game Mode logic branches
-    if (selectedMode === 'flick') {
-        // Fast-paced cycle tracking
-        gameInterval = setInterval(() => {
-            if(isPlaying) moveTarget();
-        }, 850); 
-    } else if (selectedMode === 'tracking') {
-        // Register tick tracking score calculations
-        setupTrackingLogic();
-    } else if (selectedMode === 'boss') {
-        // Custom multi-tick update sequence for erratic movement profiles
-        bossMoveInterval = setInterval(() => {
-            if(isPlaying) moveBossErratic();
-        }, 400);
-    }
-
-    // Standard core game countdown cycle timer
-    gameInterval = setInterval(() => {
-        timeLeft--;
-        timerDisplay.textContent = timeLeft;
-        if (timeLeft <= 0) endGame();
-    }, 1000);
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-function moveTarget() {
-    if (!isPlaying) return;
-    const pixelSize = parseInt(target.style.width);
-    const maxX = gameArea.clientWidth - pixelSize;
-    const maxY = gameArea.clientHeight - pixelSize;
-
-    const randomX = Math.floor(Math.random() * maxX);
-    const randomY = Math.floor(Math.random() * maxY);
-
-    target.style.left = randomX + 'px';
-    target.style.top = randomY + 'px';
+body {
+    background-color: #121214;
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
 }
 
-function moveBossErratic() {
-    if (!isPlaying) return;
-    const maxX = gameArea.clientWidth - 80;
-    const maxY = gameArea.clientHeight - 80;
-    const randomX = Math.floor(Math.random() * maxX);
-    const randomY = Math.floor(Math.random() * maxY);
-    
-    target.style.transition = "all 0.3s ease-out"; // Gives boss gliding mechanics
-    target.style.left = randomX + 'px';
-    target.style.top = randomY + 'px';
+.game-container {
+    background-color: #1c1c1f;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    width: 100%;
+    max-width: 850px;
 }
 
-// Tracking Mode Action Engine
-function setupTrackingLogic() {
-    let insideTarget = false;
-    target.addEventListener('mouseenter', () => { insideTarget = true; });
-    target.addEventListener('mouseleave', () => { insideTarget = false; });
-    
-    trackingInterval = setInterval(() => {
-        if (isPlaying && insideTarget) {
-            score++;
-            scoreDisplay.textContent = score;
-            if (score % 15 === 0) moveTarget(); // Slide profile coordinates out occasionally
-        }
-    }, 100);
+h1 {
+    margin-bottom: 20px;
+    font-size: 2rem;
+    color: #00ffcc;
 }
 
-// Click and hit action intercept structures
-target.addEventListener('mousedown', (e) => {
-    if (!isPlaying) return;
-    e.stopPropagation();
-
-    const currentMode = modeSelect.value;
-
-    if (currentMode === 'boss') {
-        bossCurrentHp--;
-        let hpPct = (bossCurrentHp / bossMaxHp) * 100;
-        bossHpInner.style.width = hpPct + '%';
-        score += 2; // Extra points per chunk damage
-        scoreDisplay.textContent = score;
-        
-        if (bossCurrentHp <= 0) {
-            coins += 50; // Mass coin payout bonus for clear condition
-            endGame("VICTORY! Boss Slain. +50 Bonus Coins!");
-            return;
-        }
-    } else if (currentMode !== 'tracking') {
-        score++;
-        scoreDisplay.textContent = score;
-        moveTarget();
-    }
-});
-
-// Accuracy deduction checker structure
-gameArea.addEventListener('mousedown', () => {
-    if (isPlaying && score > 0 && modeSelect.value !== 'tracking') {
-        score--;
-        scoreDisplay.textContent = score;
-    }
-});
-
-function endGame(customMsg) {
-    isPlaying = false;
-    clearInterval(gameInterval);
-    clearInterval(trackingInterval);
-    clearInterval(bossMoveInterval);
-    
-    target.style.display = 'none';
-    target.style.transition = 'none';
-    bossBar.style.display = 'none';
-    startBtn.style.display = 'block';
-    startBtn.textContent = 'PLAY AGAIN';
-    
-    // Standard payout generation logic scaling
-    let earnedCoins = Math.floor(score / 3);
-    coins += earnedCoins;
-    coinsDisplay.textContent = coins;
-    
-    alert(customMsg || `Game Over! Score: ${score}. You earned 💰 ${earnedCoins} AimCoins!`);
+.dashboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #26262b;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-// Store Processing Logic Node
-shopButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        const skin = btn.getAttribute('data-skin');
-        const cost = parseInt(btn.getAttribute('data-cost'));
-
-        if (unlockedSkins.includes(skin)) {
-            // Equip alternative configuration
-            equippedSkin = skin;
-            updateShopUI();
-        } else {
-            // Purchase processing logic
-            if (coins >= cost) {
-                coins -= cost;
-                coinsDisplay.textContent = coins;
-                unlockedSkins.push(skin);
-                equippedSkin = skin;
-                updateShopUI();
-                alert("Skin unlocked successfully!");
-            } else {
-                alert(`Not enough AimCoins! You need ${cost - coins} more coins.`);
-            }
-        }
-    });
-});
-
-function updateShopUI() {
-    shopButtons.forEach(btn => {
-        const skin = btn.getAttribute('data-skin');
-        const cost = btn.getAttribute('data-cost');
-        
-        // Clean class list arrays
-        btn.className = 'shop-item';
-        
-        if (equippedSkin === skin) {
-            btn.classList.add('equipped');
-            btn.textContent = `Equipped`;
-            // Apply class profile style to target crosshair tracker
-            crosshair.className = '';
-            if (skin !== 'default') crosshair.classList.add(skin);
-        } else if (unlockedSkins.includes(skin)) {
-            btn.classList.add('unlocked');
-            btn.textContent = `Use Skin`;
-        } else {
-            // Retain original string configurations
-            if(skin === 'cross') btn.textContent = `🔒 Plus Crosshair (${cost} 💰)`;
-            if(skin === 'circle') btn.textContent = `🔒 Tactical Circle (${cost} 💰)`;
-            if(skin === 'diamond') btn.textContent = `🔒 Diamond Wrap (${cost} 💰)`;
-        }
-    });
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-startBtn.addEventListener('click', startGame);
+label {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+select {
+    background-color: #3a3a42;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.currency-display {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.scoreboard {
+    display: flex;
+    justify-content: space-around;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    background: #26262b;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+#score { color: #00ff88; }
+#timer { color: #ff3366; }
+
+/* 3D Viewport Box Layout */
+#game-area {
+    width: 100%;
+    height: 450px;
+    background-color: #000000;
+    border: 2px solid #3a3a42;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Canvas generated by Three.js fills this space */
+#game-area canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#start-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 14px 28px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background-color: #00ffcc;
+    color: #09090b;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 10;
+    transition: 0.2s ease;
+}
+
+#start-btn:hover {
+    background-color: #00ccaa;
+    transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* 3D Center Screen Crosshair Styles */
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; /* Allows user to click straight through the crosshair text */
+    z-index: 5;
+    user-select: none;
+    display: none;
+    font-family: monospace;
+}
+
+/* Crosshair Designs */
+.crosshair-skin-default {
+    font-size: 28px;
+    color: #ff3366;
+    font-weight: bold;
+}
+
+.crosshair-skin-aqua {
+    font-size: 24px;
+    color: #00ffff;
+    text-shadow: 0 0 4px #00ffff;
+}
+
+.crosshair-skin-diamond {
+    font-size: 26px;
+    color: #ffffff;
+    text-shadow: 0 0 8px #00d2ff, 0 0 12px #0055ff;
+}
+
+/* Shop Layout Styling */
+.shop-section {
+    margin-top: 25px;
+    border-top: 2px solid #26262b;
+    padding-top: 15px;
+}
+.shop-section h3 {
+    margin-bottom: 12px;
+    color: #ffd700;
+}
+.shop-grid {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+.shop-item {
+    background-color: #26262b;
+    border: 2px solid #3a3a42;
+    border-radius: 8px;
+    padding: 12px;
+    width: 160px;
+    text-align: center;
+}
+.shop-item.owned {
+    border-color: #00ffcc;
+}
+.skin-preview {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 8px auto;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+}
+.default-preview { background-color: #ff3366; color: white; }
+.aqua-preview { border: 3px solid #00ffff; color: #00ffff; background: transparent; }
+.diamond-preview { background: radial-gradient(circle, #ffffff, #00d2ff); color: #0055ff; text-shadow: 0 0 4px #fff; }
+
+.shop-grid p {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+}
+.equip-btn {
+    background-color: #3a3a42;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 0.85rem;
+}
+.equip-btn.active {
+    background-color: #00ffcc;
+    color: #000;
+    font-weight: bold;
+}

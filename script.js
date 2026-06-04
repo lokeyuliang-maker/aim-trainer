@@ -1,46 +1,89 @@
+// DOM Element Links
 const gameArea = document.getElementById('game-area');
-const target = document.getElementById('target');
 const startBtn = document.getElementById('start-btn');
+const crosshair = document.getElementById('crosshair');
 const scoreDisplay = document.getElementById('score');
 const timerDisplay = document.getElementById('timer');
-const coinsDisplay = document.getElementById('coins');
-const crosshair = document.getElementById('custom-crosshair');
-const modeSelect = document.getElementById('game-mode');
-const sizeSelect = document.getElementById('target-size');
-const bossBar = document.getElementById('boss-hp-bar');
-const bossHpInner = document.getElementById('boss-hp-inner');
-const shopButtons = document.querySelectorAll('.shop-item');
+const coinDisplay = document.getElementById('coin-balance');
+const modeSelect = document.getElementById('mode-select');
+const sizeSelect = document.getElementById('size-select');
 
-// Game states
+// Core Variables
 let score = 0;
 let timeLeft = 30;
-let coins = 0;
-let gameInterval;
-let trackingInterval;
-let bossMoveInterval;
 let isPlaying = false;
+let coins = 0;
 
-// Boss Mode Settings
-let bossMaxHp = 50;
-let bossCurrentHp = 50;
+let gameInterval = null;
+let timerInterval = null;
+let trackingScoreInterval = null;
 
-// Shop Management System
-let unlockedSkins = ['default'];
-let equippedSkin = 'default';
+let currentSkin = 'default';
+let ownedSkins = ['default'];
 
-// Map size dropdowns to pixel dimensions
-const sizeMap = { small: 20, medium: 35, large: 55 };
+// Three.js 3D Engine Setup Globals
+let scene, camera, renderer, targetMesh;
+let raycaster, mouse3D;
+let isHoveringTarget = false;
 
-// Track custom crosshairs inside the container window
-gameArea.addEventListener('mousemove', (e) => {
-    const rect = gameArea.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    crosshair.style.left = x + 'px';
-    crosshair.style.top = y + 'px';
-});
+const sizeMap = { 'large': 1.6, 'medium': 1.1, 'small': 0.6 };
 
-// Primary game initializing configuration
+// Build the 3D World Scene immediately on load
+init3DEngine();
+
+function init3DEngine() {
+    // 1. Scene setup
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a0f);
+
+    // 2. Camera setup
+    camera = new THREE.PerspectiveCamera(60, gameArea.clientWidth / gameArea.clientHeight, 0.1, 1000);
+    camera.position.z = 12; // Pull camera back so we can see the space
+
+    // 3. WebGL Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
+    gameArea.appendChild(renderer.domElement);
+
+    // 4. Ambient & Directional Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0x00ffcc, 0.8);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
+
+    // 5. Creating the target sphere geometry
+    const geometry = new THREE.SphereGeometry(1, 32, 32);
+    const material = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.3, metalness: 0.2 });
+    targetMesh = new THREE.Mesh(geometry, material);
+    targetMesh.visible = false; // Hide until game starts
+    scene.add(targetMesh);
+
+    // 6. Raycasting mechanics (Interpreting 2D mouse pointer onto 3D world)
+    raycaster = new THREE.Raycaster();
+    mouse3D = new THREE.Vector2();
+
+    // Track mouse inputs over the 3D Viewport canvas box
+    gameArea.addEventListener('mousemove', onMouseMove);
+    gameArea.addEventListener('mousedown', onMouseDown);
+
+    // Run the animation loop
+    animate();
+}
+
+// Infinite update loop rendering frame graphics
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // Slow rotation animation to make targets look modern and dynamic
+    if (targetMesh && targetMesh.visible) {
+        targetMesh.rotation.x += 0.01;
+        targetMesh.rotation.y += 0.01;
+    }
+    
+    renderer.render(scene, camera);
+}
+
 function startGame() {
     score = 0;
     timeLeft = 30;
@@ -49,215 +92,175 @@ function startGame() {
     timerDisplay.textContent = timeLeft;
     
     startBtn.style.display = 'none';
-    target.style.display = 'block';
+    crosshair.style.display = 'block';
+    targetMesh.visible = true;
     
     clearInterval(gameInterval);
-    clearInterval(trackingInterval);
-    clearInterval(bossMoveInterval);
-    bossBar.style.display = 'none';
+    clearInterval(timerInterval);
+    clearInterval(trackingScoreInterval);
 
-    const selectedMode = modeSelect.value;
-    
-    // Size execution
-    let pixelSize = sizeMap[sizeSelect.value];
-    if (selectedMode === 'boss') {
-        pixelSize = 80; // Boss target size override
-        bossBar.style.display = 'block';
-        bossCurrentHp = bossMaxHp;
-        bossHpInner.style.width = '100%';
-        target.style.backgroundColor = '#ffcc00'; // Gold color variant for boss
-    } else {
-        target.style.backgroundColor = '#ff3366';
-    }
-    target.style.width = pixelSize + 'px';
-    target.style.height = pixelSize + 'px';
+    applyTarget3DStyle();
+    moveTarget3D();
 
-    function moveTarget() {
-    if (!isPlaying) return;
-    
-    // Get target size or default to 35 if it reads NaN
-    let pixelSize = parseInt(target.style.width) || 35;
-    
-    const maxX = gameArea.clientWidth - pixelSize;
-    const maxY = gameArea.clientHeight - pixelSize;
+    const mode = modeSelect.value;
 
-    // Generate random coordinates inside the box
-    const randomX = Math.floor(Math.random() * Math.max(maxX, 1));
-    const randomY = Math.floor(Math.random() * Math.max(maxY, 1));
-
-    // Instantly teleport the target to the new spot
-    target.style.left = randomX + 'px';
-    target.style.top = randomY + 'px';
-}
-
-    // Game Mode logic branches
-    if (selectedMode === 'flick') {
-        // Fast-paced cycle tracking
+    // Game engine routers
+    if (mode === 'flick') {
         gameInterval = setInterval(() => {
-            if(isPlaying) moveTarget();
-        }, 850); 
-    } else if (selectedMode === 'tracking') {
-        // Register tick tracking score calculations
-        setupTrackingLogic();
-    } else if (selectedMode === 'boss') {
-        // Custom multi-tick update sequence for erratic movement profiles
-        bossMoveInterval = setInterval(() => {
-            if(isPlaying) moveBossErratic();
-        }, 400);
+            if (isPlaying) moveTarget3D();
+        }, 850);
+    } else if (mode === 'tracking') {
+        trackingScoreInterval = setInterval(() => {
+            if (isPlaying && isHoveringTarget) {
+                score++;
+                scoreDisplay.textContent = score;
+                if (score % 15 === 0) moveTarget3D();
+            }
+        }, 100);
     }
 
-    // Standard core game countdown cycle timer
-    gameInterval = setInterval(() => {
+    // Countdown loop 
+    timerInterval = setInterval(() => {
         timeLeft--;
         timerDisplay.textContent = timeLeft;
         if (timeLeft <= 0) endGame();
     }, 1000);
 }
 
-function moveTarget() {
+function moveTarget3D() {
     if (!isPlaying) return;
-    const pixelSize = parseInt(target.style.width);
-    const maxX = gameArea.clientWidth - pixelSize;
-    const maxY = gameArea.clientHeight - pixelSize;
 
-    const randomX = Math.floor(Math.random() * maxX);
-    const randomY = Math.floor(Math.random() * maxY);
+    // Generate coordinates on a safe X/Y grid window inside camera view
+    const boundsX = 5.5; 
+    const boundsY = 3.0; 
 
-    target.style.left = randomX + 'px';
-    target.style.top = randomY + 'px';
+    const randomX = (Math.random() * 2 - 1) * boundsX;
+    const randomY = (Math.random() * 2 - 1) * boundsY;
+    
+    targetMesh.position.set(randomX, randomY, 0);
 }
 
-function moveBossErratic() {
-    if (!isPlaying) return;
-    const maxX = gameArea.clientWidth - 80;
-    const maxY = gameArea.clientHeight - 80;
-    const randomX = Math.floor(Math.random() * maxX);
-    const randomY = Math.floor(Math.random() * maxY);
+function applyTarget3DStyle() {
+    const sizeSetting = sizeSelect.value;
+    const scaleFactor = sizeMap[sizeSetting] || 1.1;
     
-    target.style.transition = "all 0.3s ease-out"; // Gives boss gliding mechanics
-    target.style.left = randomX + 'px';
-    target.style.top = randomY + 'px';
+    // Scale the 3D Sphere geometry
+    targetMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+    // Apply color options depending on what skin is chosen
+    if (currentSkin === 'aqua') {
+        targetMesh.material.color.setHex(0x00ffff);
+    } else if (currentSkin === 'diamond') {
+        targetMesh.material.color.setHex(0xaae8ff);
+    } else {
+        targetMesh.material.color.setHex(0xff3366); // Default Red
+    }
 }
 
-// Tracking Mode Action Engine
-function setupTrackingLogic() {
-    let insideTarget = false;
-    target.addEventListener('mouseenter', () => { insideTarget = true; });
-    target.addEventListener('mouseleave', () => { insideTarget = false; });
-    
-    trackingInterval = setInterval(() => {
-        if (isPlaying && insideTarget) {
+// Raycaster check engine to translate mouse over 3D model
+function checkIntersections() {
+    raycaster.setFromCamera(mouse3D, camera);
+    const intersects = raycaster.intersectObject(targetMesh);
+    return intersects.length > 0;
+}
+
+function onMouseMove(event) {
+    // Math conversion mapping standard screen pixel arrays into 3D vectors
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse3D.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse3D.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    if (isPlaying && modeSelect.value === 'tracking') {
+        isHoveringTarget = checkIntersections();
+    }
+}
+
+function onMouseDown() {
+    if (!isPlaying) return;
+    const mode = modeSelect.value;
+
+    if (mode === 'classic' || mode === 'flick') {
+        if (checkIntersections()) {
             score++;
             scoreDisplay.textContent = score;
-            if (score % 15 === 0) moveTarget(); // Slide profile coordinates out occasionally
+            moveTarget3D();
         }
-    }, 100);
+    }
 }
 
-// Click and hit action intercept structures
-target.addEventListener('mousedown', (e) => {
-    if (!isPlaying) return;
-    e.stopPropagation();
-
-    const currentMode = modeSelect.value;
-
-    if (currentMode === 'boss') {
-        bossCurrentHp--;
-        let hpPct = (bossCurrentHp / bossMaxHp) * 100;
-        bossHpInner.style.width = hpPct + '%';
-        score += 2; // Extra points per chunk damage
-        scoreDisplay.textContent = score;
-        
-        if (bossCurrentHp <= 0) {
-            coins += 50; // Mass coin payout bonus for clear condition
-            endGame("VICTORY! Boss Slain. +50 Bonus Coins!");
-            return;
-        }
-    } else if (currentMode !== 'tracking') {
-        score++;
-        scoreDisplay.textContent = score;
-        moveTarget();
-    }
-});
-
-// Accuracy deduction checker structure
-gameArea.addEventListener('mousedown', () => {
-    if (isPlaying && score > 0 && modeSelect.value !== 'tracking') {
-        score--;
-        scoreDisplay.textContent = score;
-    }
-});
-
-function endGame(customMsg) {
+function endGame() {
     isPlaying = false;
     clearInterval(gameInterval);
-    clearInterval(trackingInterval);
-    clearInterval(bossMoveInterval);
+    clearInterval(timerInterval);
+    clearInterval(trackingScoreInterval);
     
-    target.style.display = 'none';
-    target.style.transition = 'none';
-    bossBar.style.display = 'none';
+    targetMesh.visible = false;
+    crosshair.style.display = 'none';
     startBtn.style.display = 'block';
     startBtn.textContent = 'PLAY AGAIN';
-    
-    // Standard payout generation logic scaling
-    let earnedCoins = Math.floor(score / 3);
+
+    const earnedCoins = Math.floor(score / 2);
     coins += earnedCoins;
-    coinsDisplay.textContent = coins;
+    coinDisplay.textContent = coins;
     
-    alert(customMsg || `Game Over! Score: ${score}. You earned 💰 ${earnedCoins} AimCoins!`);
+    alert(`Game Over! You scored ${score} points and earned ${earnedCoins} AimCoins! 💰`);
 }
 
-// Store Processing Logic Node
-shopButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        const skin = btn.getAttribute('data-skin');
-        const cost = parseInt(btn.getAttribute('data-cost'));
+// Handle window scaling or responsive adjustments
+window.addEventListener('resize', () => {
+    if(renderer && camera) {
+        renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
+        camera.aspect = gameArea.clientWidth / gameArea.clientHeight;
+        camera.updateProjectionMatrix();
+    }
+});
 
-        if (unlockedSkins.includes(skin)) {
-            // Equip alternative configuration
-            equippedSkin = skin;
+// Shop interface logic loops
+document.querySelectorAll('.equip-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const skinName = e.target.getAttribute('data-skin');
+        const cost = parseInt(e.target.getAttribute('data-cost')) || 0;
+
+        if (ownedSkins.includes(skinName)) {
+            currentSkin = skinName;
             updateShopUI();
+            if(isPlaying) applyTarget3DStyle();
         } else {
-            // Purchase processing logic
             if (coins >= cost) {
                 coins -= cost;
-                coinsDisplay.textContent = coins;
-                unlockedSkins.push(skin);
-                equippedSkin = skin;
+                coinDisplay.textContent = coins;
+                ownedSkins.push(skinName);
+                currentSkin = skinName;
                 updateShopUI();
-                alert("Skin unlocked successfully!");
+                if(isPlaying) applyTarget3DStyle();
+                alert("Crosshair skin unlocked! Ready for action! 💎");
             } else {
-                alert(`Not enough AimCoins! You need ${cost - coins} more coins.`);
+                alert("Not enough AimCoins! Keep practicing your drills.");
             }
         }
     });
 });
 
 function updateShopUI() {
-    shopButtons.forEach(btn => {
-        const skin = btn.getAttribute('data-skin');
-        const cost = btn.getAttribute('data-cost');
-        
-        // Clean class list arrays
-        btn.className = 'shop-item';
-        
-        if (equippedSkin === skin) {
-            btn.classList.add('equipped');
-            btn.textContent = `Equipped`;
-            // Apply class profile style to target crosshair tracker
-            crosshair.className = '';
-            if (skin !== 'default') crosshair.classList.add(skin);
-        } else if (unlockedSkins.includes(skin)) {
-            btn.classList.add('unlocked');
-            btn.textContent = `Use Skin`;
-        } else {
-            // Retain original string configurations
-            if(skin === 'cross') btn.textContent = `🔒 Plus Crosshair (${cost} 💰)`;
-            if(skin === 'circle') btn.textContent = `🔒 Tactical Circle (${cost} 💰)`;
-            if(skin === 'diamond') btn.textContent = `🔒 Diamond Wrap (${cost} 💰)`;
+    // Update Crosshair Overlay Graphics engine class
+    crosshair.className = `crosshair-skin-${currentSkin}`;
+    if (currentSkin === 'default') crosshair.textContent = "+";
+    if (currentSkin === 'aqua') crosshair.textContent = "◎";
+    if (currentSkin === 'diamond') crosshair.textContent = "✧";
+
+    document.querySelectorAll('.shop-item').forEach(item => {
+        const btn = item.querySelector('.equip-btn');
+        const skinName = btn.getAttribute('data-skin');
+
+        if (ownedSkins.includes(skinName)) {
+            item.classList.add('owned');
+            if (currentSkin === skinName) {
+                btn.textContent = "Equipped";
+                btn.className = "equip-btn active";
+            } else {
+                btn.textContent = "Equip";
+                btn.className = "equip-btn";
+            }
         }
     });
 }
-
-startBtn.addEventListener('click', startGame);

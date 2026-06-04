@@ -1,61 +1,76 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Reflex Aim Trainer Pro</title>
+    <title>3D Elite Aim Trainer Pro</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Include Three.js library for 3D graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div class="game-container">
-        <h1>🎯 Elite Aim Trainer Pro</h1>
+        <h1>🎯 3D Elite Aim Trainer Pro</h1>
         
-        <!-- Stats Bar -->
-        <div class="scoreboard">
-            <div>Score: <span id="score">0</span></div>
-            <div>Time Left: <span id="timer">30</span>s</div>
-            <div class="coins-display">💰 AimCoins: <span id="coins">0</span></div>
-        </div>
-
         <!-- Controls Dashboard -->
         <div class="dashboard">
             <div class="control-group">
-                <label>Game Mode:</label>
-                <select id="game-mode">
+                <label for="mode-select">Game Mode:</label>
+                <select id="mode-select">
                     <option value="classic">Classic Click</option>
-                    <option value="flick">Flick Shot (Respawns Fast)</option>
-                    <option value="tracking">Tracking (Hold Cursor On Target)</option>
-                    <option value="boss">Boss Fight 👑</option>
+                    <option value="flick">Flick Shot (Timed)</option>
+                    <option value="tracking">Tracking (Hover)</option>
                 </select>
             </div>
 
             <div class="control-group">
-                <label>Target Size:</label>
-                <select id="target-size">
+                <label for="size-select">Target Size:</label>
+                <select id="size-select">
                     <option value="large">Large</option>
                     <option value="medium" selected>Medium</option>
                     <option value="small">Small</option>
                 </select>
             </div>
+            
+            <div class="currency-display">
+                Balance: <span id="coin-balance">0</span> 💰
+            </div>
         </div>
 
-        <!-- Main Game Window -->
-        <div id="game-area">
-            <div id="custom-crosshair"></div>
-            <button id="start-btn">START GAME</button>
-            <div id="target"></div>
-            <div id="boss-hp-bar"><div id="boss-hp-inner"></div></div>
+        <!-- Scoreboard -->
+        <div class="scoreboard">
+            <div>Score: <span id="score">0</span></div>
+            <div>Time Left: <span id="timer">30</span>s</div>
         </div>
-        
-        <!-- In-Game Shop -->
-        <div class="shop-container">
-            <h3>🛒 AimCoin Crosshair Shop</h3>
-            <div class="shop-items">
-                <button class="shop-item unlocked" data-skin="default" data-cost="0">Default Dot (Free)</button>
-                <button class="shop-item" data-skin="cross" data-cost="50">🔒 Plus Crosshair (50 💰)</button>
-                <button class="shop-item" data-skin="circle" data-cost="100">🔒 Tactical Circle (100 💰)</button>
-                <button class="shop-item" data-skin="diamond" data-cost="200">🔒 Diamond Wrap (200 💰)</button>
+
+        <!-- 3D Play Zone Area -->
+        <div id="game-area">
+            <button id="start-btn">START 3D GAME</button>
+            <!-- Fixed Overlay Crosshair for Aiming -->
+            <div id="crosshair" class="crosshair-skin-default">+</div>
+        </div>
+
+        <!-- Shop System Section -->
+        <div class="shop-section">
+            <h3>🛒 Crosshair Skin Shop</h3>
+            <div class="shop-grid">
+                <div class="shop-item owned" id="skin-default">
+                    <div class="skin-preview default-preview">+</div>
+                    <p>Default Red</p>
+                    <button class="equip-btn active" data-skin="default">Equipped</button>
+                </div>
+                <div class="shop-item" id="skin-aqua">
+                    <div class="skin-preview aqua-preview">◎</div>
+                    <p>Aqua Circle (50 💰)</p>
+                    <button class="equip-btn" data-skin="aqua" data-cost="50">Buy</button>
+                </div>
+                <div class="shop-item" id="skin-diamond">
+                    <div class="skin-preview diamond-preview">✧</div>
+                    <p>Diamond Wrap (150 💰)</p>
+                    <button class="equip-btn" data-skin="diamond" data-cost="150">Buy</button>
+                </div>
             </div>
         </div>
     </div>
