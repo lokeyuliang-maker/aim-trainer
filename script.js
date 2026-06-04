@@ -1,4 +1,4 @@
-// DOM Element Links
+
 const gameArea = document.getElementById('game-area');
 const startBtn = document.getElementById('start-btn');
 const crosshair = document.getElementById('crosshair');
@@ -9,7 +9,6 @@ const coinDisplay = document.getElementById('coin-balance');
 const modeSelect = document.getElementById('mode-select');
 const sizeSelect = document.getElementById('size-select');
 
-// Core Game Variables
 let score = 0;
 let timeLeft = 30;
 let isPlaying = false;
@@ -22,7 +21,6 @@ let trackingScoreInterval = null;
 let currentSkin = 'default';
 let ownedSkins = ['default'];
 
-// Three.js Engine Setup
 let scene, camera, renderer, targetMesh;
 let raycaster, mouse3D;
 let isHoveringTarget = false;
@@ -33,7 +31,7 @@ window.addEventListener('load', () => {
     if (typeof THREE !== 'undefined') {
         init3DEngine();
     } else {
-        console.error("Three.js engine failed to initialize properly!");
+        console.error("Three.js engine missing!");
     }
 });
 
@@ -43,9 +41,9 @@ function init3DEngine() {
     camera = new THREE.PerspectiveCamera(60, gameArea.clientWidth / gameArea.clientHeight, 0.1, 1000);
     camera.position.z = 12;
 
-    // FIX: Set alpha to true so it doesn't draw a massive black background over your HTML HUD elements
+    // Explicit clear rendering flags
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setClearColor(0x000000, 0); // Completely transparent background
+    renderer.setClearColor(0x000000, 0); 
     renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
     gameArea.appendChild(renderer.domElement);
 
@@ -55,7 +53,6 @@ function init3DEngine() {
     dirLight.position.set(5, 10, 7);
     scene.add(dirLight);
 
-    // Target Sphere Mesh
     const geometry = new THREE.SphereGeometry(1, 32, 32);
     const material = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.3, metalness: 0.2 });
     targetMesh = new THREE.Mesh(geometry, material);
@@ -74,12 +71,10 @@ function init3DEngine() {
 
 function animate() {
     requestAnimationFrame(animate);
-    
     if (targetMesh && targetMesh.visible) {
         targetMesh.rotation.x += 0.01;
         targetMesh.rotation.y += 0.01;
     }
-    
     if (renderer && scene && camera) {
         renderer.render(scene, camera);
     }
@@ -105,7 +100,6 @@ function startGame() {
     moveTarget3D();
 
     const mode = modeSelect.value;
-
     if (mode === 'flick') {
         gameInterval = setInterval(() => {
             if (isPlaying) moveTarget3D();
@@ -129,25 +123,18 @@ function startGame() {
 
 function moveTarget3D() {
     if (!isPlaying) return;
-    const boundsX = 4.2; 
-    const boundsY = 2.2; 
-    const randomX = (Math.random() * 2 - 1) * boundsX;
-    const randomY = (Math.random() * 2 - 1) * boundsY;
+    const randomX = (Math.random() * 2 - 1) * 4.2;
+    const randomY = (Math.random() * 2 - 1) * 2.2;
     targetMesh.position.set(randomX, randomY, 0);
 }
 
 function applyTarget3DStyle() {
-    const sizeSetting = sizeSelect.value;
-    const scaleFactor = sizeMap[sizeSetting] || 1.1;
+    const scaleFactor = sizeMap[sizeSelect.value] || 1.1;
     targetMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-    if (currentSkin === 'aqua') {
-        targetMesh.material.color.setHex(0x00ffff);
-    } else if (currentSkin === 'diamond') {
-        targetMesh.material.color.setHex(0xaae8ff);
-    } else {
-        targetMesh.material.color.setHex(0xff3366);
-    }
+    if (currentSkin === 'aqua') targetMesh.material.color.setHex(0x00ffff);
+    else if (currentSkin === 'diamond') targetMesh.material.color.setHex(0xaae8ff);
+    else targetMesh.material.color.setHex(0xff3366);
 }
 
 function checkIntersections() {
@@ -163,7 +150,6 @@ function onMouseMove(event) {
     mouse3D.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse3D.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // Smooth Input Weapon Sway follow simulation
     if (isPlaying && weaponHud) {
         const deltaX = mouse3D.x * 35; 
         const deltaY = -mouse3D.y * 25;
@@ -178,10 +164,9 @@ function onMouseMove(event) {
 function onMouseDown() {
     if (!isPlaying) return;
     
-    // Snappy weapon recoil trigger animation rule
     if (weaponHud) {
         weaponHud.classList.remove('weapon-recoil');
-        void weaponHud.offsetWidth; // browser trick to reflow layout state
+        void weaponHud.offsetWidth; 
         weaponHud.classList.add('weapon-recoil');
     }
 

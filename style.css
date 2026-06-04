@@ -1,3 +1,4 @@
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -39,19 +40,12 @@ h1 {
     padding: 15px;
     border-radius: 8px;
     margin-bottom: 15px;
-    flex-wrap: wrap;
-    gap: 10px;
 }
 
 .control-group {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-label {
-    font-size: 0.9rem;
-    color: #aaa;
 }
 
 select {
@@ -84,7 +78,7 @@ select {
 #score { color: #00ff88; }
 #timer { color: #ff3366; }
 
-/* 3D Play Zone - Explicitly relative so elements layer correctly */
+/* The main window wrapper container */
 #game-area {
     width: 100%;
     height: 450px;
@@ -95,18 +89,15 @@ select {
     overflow: hidden;
 }
 
-/* Force the 3D target layer to background */
+/* Force the 3D space to the bottom background layer */
 #game-area canvas {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-    z-index: 1; 
+    z-index: 1 !important;
 }
 
-/* Force Interactive buttons to the absolute front layer */
+/* Elevate the start button to the absolute top layer */
 #start-btn {
     position: absolute;
     top: 50%;
@@ -120,7 +111,7 @@ select {
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    z-index: 10; 
+    z-index: 10 !important;
     transition: 0.2s ease;
 }
 
@@ -141,14 +132,14 @@ select {
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    z-index: 8;
+    z-index: 8 !important;
     display: none;
 }
 
 #crosshair.crosshair-skin-aqua { background-color: #00ffff; box-shadow: 0 0 8px #00ffff; }
 #crosshair.crosshair-skin-diamond { background-color: #ffffff; box-shadow: 0 0 10px #00d2ff; }
 
-/* Tactical Weapon HUD Style Layout */
+/* Tactical HUD Gun Container */
 #weapon-hud {
     position: absolute;
     bottom: 0;
@@ -156,13 +147,12 @@ select {
     width: 200px;
     height: 250px;
     pointer-events: none;
-    z-index: 5; /* Floats safely directly over top of the 3D canvas layer */
+    z-index: 5 !important; /* Floats directly between the target canvas and crosshair */
     display: none;
     transform-origin: bottom center;
     transition: transform 0.08s ease-out;
 }
 
-/* The Sleek Gun Body Frame */
 .barrel-top {
     position: absolute;
     top: 40px;
@@ -174,7 +164,6 @@ select {
     box-shadow: inset 2px 2px 5px rgba(255,255,255,0.1), 5px 10px 15px rgba(0,0,0,0.5);
 }
 
-/* Glowing Cyber Laser Line down the middle */
 .laser-sight {
     position: absolute;
     top: 20px;
@@ -186,7 +175,6 @@ select {
     border-radius: 3px;
 }
 
-/* Angled Tactical Player Sleeve Arm */
 .arm-sleeve {
     position: absolute;
     bottom: -30px;
@@ -199,7 +187,6 @@ select {
     box-shadow: 4px 4px 12px rgba(0,0,0,0.6);
 }
 
-/* Quick Snappy Recoil Punch Class */
 .weapon-recoil {
     animation: fireKick 0.12s ease-out;
 }
