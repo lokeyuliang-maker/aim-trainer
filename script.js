@@ -2,6 +2,7 @@
 const gameArea = document.getElementById('game-area');
 const startBtn = document.getElementById('start-btn');
 const crosshair = document.getElementById('crosshair');
+const gunOverlay = document.getElementById('fps-gun-overlay');
 const scoreDisplay = document.getElementById('score');
 const timerDisplay = document.getElementById('timer');
 const coinDisplay = document.getElementById('coin-balance');
@@ -21,13 +22,10 @@ let trackingScoreInterval = null;
 let currentSkin = 'default';
 let ownedSkins = ['default'];
 
-// Three.js 3D Engine Setup Globals
+// Three.js Engine Variables
 let scene, camera, renderer, targetMesh;
-let gunGroup, gunBarrel, gunGrip, handSleeve;
 let raycaster, mouse3D;
 let isHoveringTarget = false;
-let recoilActive = false;
-let recoilTimer = 0;
 
 const sizeMap = { 'large': 1.6, 'medium': 1.1, 'small': 0.6 };
 
@@ -35,13 +33,13 @@ window.addEventListener('load', () => {
     if (typeof THREE !== 'undefined') {
         init3DEngine();
     } else {
-        console.error("Three.js library failed to load!");
+        console.error("Three.js failed to load!");
     }
 });
 
 function init3DEngine() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0c0c10);
+    scene.background = new THREE.Color(0x0a0a0f);
 
     camera = new THREE.PerspectiveCamera(60, gameArea.clientWidth / gameArea.clientHeight, 0.1, 1000);
     camera.position.z = 12;
@@ -50,15 +48,11 @@ function init3DEngine() {
     renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
     gameArea.appendChild(renderer.domElement);
 
-    // Multi-directional lighting to make gun models look realistic
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight1.position.set(5, 10, 7);
-    scene.add(dirLight1);
-    const dirLight2 = new THREE.DirectionalLight(0x00aaff, 0.4); // Cool side highlight
-    dirLight2.position.set(-5, -5, 2);
-    scene.add(dirLight2);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
 
     // Target Sphere
     const geometry = new THREE.SphereGeometry(1, 32, 32);
@@ -66,61 +60,6 @@ function init3DEngine() {
     targetMesh = new THREE.Mesh(geometry, material);
     targetMesh.visible = false; 
     scene.add(targetMesh);
-
-    // BUILD DETAILED MESH HANDGUN AND ARM EXTENSION
-    function createHandgun() {
-    gunGroup = new THREE.Group();
-
-    // 1. Sleek, Skinny Pistol Slide (Made it thinner and longer)
-    const barrelGeo = new THREE.BoxGeometry(0.18, 0.3, 2.6);
-    const gunMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.8 });
-    gunBarrel = new THREE.Mesh(barrelGeo, gunMat);
-    gunBarrel.position.set(0, 0, -1.0);
-    gunGroup.add(gunBarrel);
-
-    // 2. Tactical Under-Barrel Laser Sight (Bright Neon Blue!)
-    const laserBoxGeo = new THREE.BoxGeometry(0.14, 0.14, 1.2);
-    const laserBoxMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-    const laserBox = new THREE.Mesh(laserBoxGeo, laserBoxMat);
-    laserBox.position.set(0, -0.2, -1.4);
-    gunGroup.add(laserBox);
-
-    const laserBeamGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 8);
-    const laserBeamMat = new THREE.MeshBasicMaterial({ color: 0x00ffff }); // Neon Aqua Glow
-    const laserBeam = new THREE.Mesh(laserBeamGeo, laserBeamMat);
-    laserBeam.position.set(0, -0.2, -2.0);
-    laserBeam.rotation.x = Math.PI / 2;
-    gunGroup.add(laserBeam);
-
-    // 3. Slanted Handle Grip
-    const gripGeo = new THREE.BoxGeometry(0.16, 0.8, 0.4);
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.6 });
-    gunGrip = new THREE.Mesh(gripGeo, gripMat);
-    gunGrip.position.set(0, -0.5, -0.1);
-    gunGrip.rotation.x = -0.35; // Sharper angle for a tactical look
-    gunGroup.add(gunGrip);
-
-    // 4. Compact Tactical Glove Guard
-    const handGeo = new THREE.BoxGeometry(0.28, 0.35, 0.5);
-    const handMat = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.5 });
-    const hand = new THREE.Mesh(handGeo, handMat);
-    hand.position.set(0, -0.4, 0.1);
-    gunGroup.add(hand);
-
-    // 5. Extended Forearm Player Sleeve (Tucked slightly lower)
-    const sleeveGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.8, 16);
-    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2e3038, roughness: 0.7 });
-    handSleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
-    handSleeve.position.set(0.2, -1.4, 1.2);
-    handSleeve.rotation.x = -Math.PI / 3.0; 
-    handSleeve.rotation.z = -0.1;
-    gunGroup.add(handSleeve);
-
-    // Perfect lower-right placement
-    gunGroup.position.set(2.4, -2.0, 7.5);
-    scene.add(gunGroup);
-    gunGroup.visible = false; 
-}
 
     raycaster = new THREE.Raycaster();
     mouse3D = new THREE.Vector2();
@@ -132,141 +71,12 @@ function init3DEngine() {
     animate();
 }
 
-function createHandgun() {
-    gunGroup = new THREE.Group();
-
-    // 1. Upper Receiver Rail (Dark Carbon Frame)
-    const upperGeo = new THREE.BoxGeometry(0.16, 0.2, 2.6);
-    const darkMetal = new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.2, metalness: 0.9 });
-    const upperRail = new THREE.Mesh(upperGeo, darkMetal);
-    upperRail.position.set(0, 0.1, -1.0);
-    gunGroup.add(upperRail);
-
-    // 2. Dual Glow Rails (Left & Right - Neon Cyan Plasma Channels)
-    const railGeo = new THREE.BoxGeometry(0.04, 0.12, 2.2);
-    const plasmaGlow = new THREE.MeshBasicMaterial({ color: 0x00ffcc }); // Bright Aqua Neon
-    
-    const leftRail = new THREE.Mesh(railGeo, plasmaGlow);
-    leftRail.position.set(0.09, 0, -1.1);
-    gunGroup.add(leftRail);
-
-    const rightRail = new THREE.Mesh(railGeo, plasmaGlow);
-    rightRail.position.set(-0.09, 0, -1.1);
-    gunGroup.add(rightRail);
-
-    // 3. Lower Core Barrel (Sleek Chrome)
-    const coreGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 12);
-    const chromeMetal = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.1, metalness: 1.0 });
-    const coreBarrel = new THREE.Mesh(coreGeo, chromeMetal);
-    coreBarrel.rotation.x = Math.PI / 2;
-    coreBarrel.position.set(0, -0.05, -1.15);
-    gunGroup.add(coreBarrel);
-
-    // 4. Muzzle Brake Cap (Aggressive Tip)
-    const tipGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.3, 12);
-    const tip = new THREE.Mesh(tipGeo, darkMetal);
-    tip.rotation.x = Math.PI / 2;
-    tip.position.set(0, -0.05, -2.4);
-    gunGroup.add(tip);
-
-    // 5. Slanted Ergonomic Grip Handle
-    const gripGeo = new THREE.BoxGeometry(0.14, 0.75, 0.35);
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x08080a, roughness: 0.8 });
-    gunGrip = new THREE.Mesh(gripGeo, gripMat);
-    gunGrip.position.set(0, -0.45, -0.1);
-    gunGrip.rotation.x = -0.4; // Sharp ergonomic racing angle
-    gunGroup.add(gunGrip);
-
-    // 6. Tactical Poly Glove Guard
-    const handGeo = new THREE.BoxGeometry(0.24, 0.35, 0.45);
-    const handMat = new THREE.MeshStandardMaterial({ color: 0x222327, roughness: 0.5 });
-    const hand = new THREE.Mesh(handGeo, handMat);
-    hand.position.set(0, -0.38, 0.1);
-    gunGroup.add(hand);
-
-    // 7. Swept-Forward Arm Sleeve Connection
-    const sleeveGeo = new THREE.CylinderGeometry(0.22, 0.32, 2.6, 16);
-    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2b2d35, roughness: 0.6 });
-    handSleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
-    handSleeve.position.set(0.18, -1.3, 1.1);
-    handSleeve.rotation.x = -Math.PI / 3.0;
-    handSleeve.rotation.z = -0.08;
-    gunGroup.add(handSleeve);
-
-    // Dynamic Viewport Alignment placement
-    gunGroup.position.set(2.4, -2.0, 7.5);
-    scene.add(gunGroup);
-    gunGroup.visible = false; 
-
-    // Keep global link assigned for the skin coloring functions
-    gunBarrel = upperRail; 
-}
-    gunGroup = new THREE.Group();
-
-    // 1. Main Realistic Pistol Slide/Barrel Frame
-    const barrelGeo = new THREE.BoxGeometry(0.35, 0.5, 2.4);
-    const gunMat = new THREE.MeshStandardMaterial({ color: 0x1f2026, roughness: 0.4, metalness: 0.8 });
-    gunBarrel = new THREE.Mesh(barrelGeo, gunMat);
-    gunBarrel.position.set(0, 0, -1.0);
-    gunGroup.add(gunBarrel);
-
-    // 2. Pistol Lower Handle Grip
-    const gripGeo = new THREE.BoxGeometry(0.3, 0.9, 0.55);
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.7 });
-    gunGrip = new THREE.Mesh(gripGeo, gripMat);
-    gunGrip.position.set(0, -0.6, -0.2);
-    gunGrip.rotation.x = -0.25; // Leans the grip backward realistically
-    gunGroup.add(gunGrip);
-
-    // 3. Tactical Glove Guard Hand Simulation
-    const handGeo = new THREE.BoxGeometry(0.45, 0.5, 0.6);
-    const handMat = new THREE.MeshStandardMaterial({ color: 0x2a2b30, roughness: 0.6 }); // Charcoal glove fabric
-    const hand = new THREE.Mesh(handGeo, handMat);
-    hand.position.set(0, -0.5, 0.15);
-    gunGroup.add(hand);
-
-    // 4. Extended Full Forearm Player Sleeve (Angles from off-screen right)
-    const sleeveGeo = new THREE.CylinderGeometry(0.35, 0.45, 2.5, 16);
-    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x3e414c, roughness: 0.8 }); // Sleeve shirt texture
-    handSleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
-    handSleeve.position.set(0.3, -1.3, 1.0);
-    handSleeve.rotation.x = -Math.PI / 3.2; // Slants up towards the gun handle
-    handSleeve.rotation.z = -0.15;
-    gunGroup.add(handSleeve);
-
-    // Set start resting coordinates (lower right corner)
-    gunGroup.position.set(2.2, -1.9, 7.5);
-    scene.add(gunGroup);
-    gunGroup.visible = false; 
-
-
 function animate() {
     requestAnimationFrame(animate);
     
     if (targetMesh && targetMesh.visible) {
         targetMesh.rotation.x += 0.01;
         targetMesh.rotation.y += 0.01;
-    }
-
-    // Dynamic Tracking Aim Control
-    if (isPlaying && gunGroup) {
-        const targetX = mouse3D.x * 4.0;
-        const targetY = mouse3D.y * 2.4;
-        
-        // Weapon sway delay tracking (Makes gun lag behind mouse smoothly like an FPS game)
-        gunGroup.rotation.y = THREE.MathUtils.lerp(gunGroup.rotation.y, (targetX - gunGroup.position.x) * 0.14, 0.1);
-        gunGroup.rotation.x = THREE.MathUtils.lerp(gunGroup.rotation.x, -(targetY - gunGroup.position.y) * 0.14, 0.1);
-
-        // Active Recoil Animation Loop
-        if (recoilActive) {
-            recoilTimer += 0.25;
-            gunGroup.position.z = 7.5 + Math.sin(recoilTimer) * 0.6; // Slides back
-            gunGroup.position.y = -1.9 + Math.sin(recoilTimer) * 0.3; // Snaps upwards
-            if (recoilTimer >= Math.PI) {
-                recoilActive = false;
-                gunGroup.position.set(2.2, -1.9, 7.5); // Snap back to rest position
-            }
-        }
     }
     
     if (renderer && scene && camera) {
@@ -283,8 +93,8 @@ function startGame() {
     
     startBtn.style.display = 'none';
     crosshair.style.display = 'block';
+    gunOverlay.style.display = 'block'; // Show the realistic weapon sprite
     targetMesh.visible = true;
-    gunGroup.visible = true;
     
     clearInterval(gameInterval);
     clearInterval(timerInterval);
@@ -330,19 +140,12 @@ function applyTarget3DStyle() {
     const scaleFactor = sizeMap[sizeSetting] || 1.1;
     targetMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-    // Apply shop skins across both target mesh and weapon metals
     if (currentSkin === 'aqua') {
         targetMesh.material.color.setHex(0x00ffff);
-        gunBarrel.material.color.setHex(0x005577);
-        handSleeve.material.color.setHex(0x003344);
     } else if (currentSkin === 'diamond') {
         targetMesh.material.color.setHex(0xaae8ff);
-        gunBarrel.material.color.setHex(0xd0f5ff);
-        handSleeve.material.color.setHex(0x7aa6c2);
     } else {
         targetMesh.material.color.setHex(0xff3366);
-        gunBarrel.material.color.setHex(0x1f2026);
-        handSleeve.material.color.setHex(0x3e414c);
     }
 }
 
@@ -359,6 +162,13 @@ function onMouseMove(event) {
     mouse3D.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse3D.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
+    // Smooth Gun Sway Follow Effect
+    if (isPlaying && gunOverlay) {
+        const moveX = mouse3D.x * 25; // Subtle lag movement left/right
+        const moveY = -mouse3D.y * 15;
+        gunOverlay.style.transform = `translate(${moveX}px, ${moveY}px)`;
+    }
+
     if (isPlaying && modeSelect.value === 'tracking') {
         isHoveringTarget = checkIntersections();
     }
@@ -367,9 +177,12 @@ function onMouseMove(event) {
 function onMouseDown() {
     if (!isPlaying) return;
     
-    // Trigger weapon blowback animations
-    recoilActive = true;
-    recoilTimer = 0;
+    // Trigger Recoil Animation
+    if (gunOverlay) {
+        gunOverlay.classList.remove('gun-recoil');
+        void gunOverlay.offsetWidth; // Reflow magic trick to reset animation
+        gunOverlay.classList.add('gun-recoil');
+    }
 
     const mode = modeSelect.value;
     if (mode === 'classic' || mode === 'flick') {
@@ -388,8 +201,8 @@ function endGame() {
     clearInterval(trackingScoreInterval);
     
     targetMesh.visible = false;
-    gunGroup.visible = false;
     crosshair.style.display = 'none';
+    gunOverlay.style.display = 'none'; // Hide weapon
     startBtn.style.display = 'block';
     startBtn.textContent = 'PLAY AGAIN';
 
@@ -425,7 +238,7 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
                 currentSkin = skinName;
                 updateShopUI();
                 applyTarget3DStyle();
-                alert("Skin unlocked! Gear equipped. 💎");
+                alert("Skin equipped!");
             } else {
                 alert("Not enough AimCoins!");
             }
