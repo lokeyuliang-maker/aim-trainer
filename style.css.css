@@ -143,6 +143,97 @@ select {
    TACTICAL FPS WEAPON CONTAINER (Anatomy of the Gun Elements)
    ========================================================================== */
 #weapon-hud {
+    /* ==========================================================================
+   TACTICAL FPS WEAPON CONTAINER (Lifted & Angled View)
+   ========================================================================== */
+#weapon-hud {
+    position: absolute;
+    bottom: -30px;            /* Sits perfectly anchored to the screen bottom */
+    right: 5%;
+    width: 260px;
+    height: 320px;
+    pointer-events: none;
+    z-index: 5 !important;
+    display: none;
+    transform-origin: bottom center;
+    transition: transform 0.06s ease-out;
+}
+
+/* Metallic Gun Barrel Main Frame */
+.gun-body-main {
+    position: absolute;
+    bottom: 90px;             /* Lifted out of the bottom dead zone */
+    right: 30px;
+    width: 65px;
+    height: 170px;            /* Sleeker, longer tactical barrel profile */
+    background: linear-gradient(90deg, #2c2e38 0%, #444857 30%, #1e1f26 70%, #121318 100%);
+    border-radius: 6px 6px 4px 4px;
+    border-left: 2px solid #5f647a;
+    box-shadow: -10px 15px 25px rgba(0,0,0,0.6);
+}
+
+/* Glowing Neon Cyan Weapon Core Strip */
+.laser-sight {
+    position: absolute;
+    bottom: 180px;            /* Lifted forward on top of the slide main frame */
+    right: 59px;
+    width: 7px;
+    height: 130px;
+    background: linear-gradient(to top, #00ffcc, #ffffff);
+    box-shadow: 0 0 16px #00ffcc, 0 0 6px #ffffff;
+    border-radius: 4px;
+    z-index: 6;
+}
+
+/* Inset line running through the weapon body */
+.barrel-accent-line {
+    position: absolute;
+    top: 0;
+    left: 45%;
+    width: 5px;
+    height: 100%;
+    background: #121318;
+    border-left: 1px solid #00ffcc;
+}
+
+/* Angled Weapon Pistol Handle */
+.gun-grip {
+    position: absolute;
+    bottom: 30px;             /* Shifted up to connect to the main receiver frame */
+    right: 55px;
+    width: 48px;
+    height: 95px;
+    background: linear-gradient(135deg, #1c1d24 0%, #0f1014 100%);
+    transform: rotate(28deg);  /* More aggressive tactical weapon tilt */
+    border-radius: 6px;
+    border-right: 2px solid #2d303d;
+}
+
+/* Protective Trigger Mechanism Cover Guard */
+.trigger-guard {
+    position: absolute;
+    bottom: 115px;            /* Tracked upward with the updated chassis body */
+    right: 72px;
+    width: 32px;
+    height: 42px;
+    border: 4px solid #2c2e38;
+    border-radius: 50%;
+    background: transparent;
+}
+
+/* Solid Combat Armor Player Sleeve */
+.arm-sleeve {
+    position: absolute;
+    bottom: -40px;
+    right: -20px;
+    width: 150px;
+    height: 160px;            /* Extends upward to wrap the grip frame cleanly */
+    background: linear-gradient(105deg, #2d303b 0%, #16181d 60%, #0b0c0f 100%);
+    transform: rotate(-10deg); /* Counter-angled sleeve element */
+    border-radius: 4px;
+    border-top: 3px solid #434857;
+    z-index: 4;
+}
     position: absolute;
     bottom: -10px;
     right: 5%;
