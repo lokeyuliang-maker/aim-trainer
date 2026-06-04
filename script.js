@@ -72,7 +72,23 @@ function startGame() {
     target.style.width = pixelSize + 'px';
     target.style.height = pixelSize + 'px';
 
-    moveTarget();
+    function moveTarget() {
+    if (!isPlaying) return;
+    
+    // Get target size or default to 35 if it reads NaN
+    let pixelSize = parseInt(target.style.width) || 35;
+    
+    const maxX = gameArea.clientWidth - pixelSize;
+    const maxY = gameArea.clientHeight - pixelSize;
+
+    // Generate random coordinates inside the box
+    const randomX = Math.floor(Math.random() * Math.max(maxX, 1));
+    const randomY = Math.floor(Math.random() * Math.max(maxY, 1));
+
+    // Instantly teleport the target to the new spot
+    target.style.left = randomX + 'px';
+    target.style.top = randomY + 'px';
+}
 
     // Game Mode logic branches
     if (selectedMode === 'flick') {
