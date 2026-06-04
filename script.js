@@ -28,60 +28,60 @@ let isHoveringTarget = false;
 
 const sizeMap = { 'large': 1.6, 'medium': 1.1, 'small': 0.6 };
 
-// Build the 3D World Scene immediately on load
-init3DEngine();
+// Wait for the page to completely load before starting the 3D engine
+window.addEventListener('load', () => {
+    if (typeof THREE !== 'undefined') {
+        init3DEngine();
+    } else {
+        console.error("Three.js library failed to load from the internet!");
+        alert("Error: 3D library could not load. Check your internet connection or reload the page.");
+    }
+});
 
 function init3DEngine() {
-    // 1. Scene setup
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a0f);
 
-    // 2. Camera setup
     camera = new THREE.PerspectiveCamera(60, gameArea.clientWidth / gameArea.clientHeight, 0.1, 1000);
-    camera.position.z = 12; // Pull camera back so we can see the space
+    camera.position.z = 12;
 
-    // 3. WebGL Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
     gameArea.appendChild(renderer.domElement);
 
-    // 4. Ambient & Directional Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     const dirLight = new THREE.DirectionalLight(0x00ffcc, 0.8);
     dirLight.position.set(5, 10, 7);
     scene.add(dirLight);
 
-    // 5. Creating the target sphere geometry
     const geometry = new THREE.SphereGeometry(1, 32, 32);
     const material = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.3, metalness: 0.2 });
     targetMesh = new THREE.Mesh(geometry, material);
-    targetMesh.visible = false; // Hide until game starts
+    targetMesh.visible = false; 
     scene.add(targetMesh);
 
-    // 6. Raycasting mechanics (Interpreting 2D mouse pointer onto 3D world)
     raycaster = new THREE.Raycaster();
     mouse3D = new THREE.Vector2();
 
-    // Track mouse inputs over the 3D Viewport canvas box
     gameArea.addEventListener('mousemove', onMouseMove);
     gameArea.addEventListener('mousedown', onMouseDown);
 
-    // Run the animation loop
+    // Link the start button click event safely inside the engine setup
+    startBtn.addEventListener('click', startGame);
+
     animate();
 }
 
-// Infinite update loop rendering frame graphics
 function animate() {
     requestAnimationFrame(animate);
-    
-    // Slow rotation animation to make targets look modern and dynamic
     if (targetMesh && targetMesh.visible) {
         targetMesh.rotation.x += 0.01;
         targetMesh.rotation.y += 0.01;
     }
-    
-    renderer.render(scene, camera);
+    if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+    }
 }
 
 function startGame() {
@@ -104,7 +104,6 @@ function startGame() {
 
     const mode = modeSelect.value;
 
-    // Game engine routers
     if (mode === 'flick') {
         gameInterval = setInterval(() => {
             if (isPlaying) moveTarget3D();
@@ -116,10 +115,9 @@ function startGame() {
                 scoreDisplay.textContent = score;
                 if (score % 15 === 0) moveTarget3D();
             }
-        }, 100);
+        }, 1000 / 10);
     }
 
-    // Countdown loop 
     timerInterval = setInterval(() => {
         timeLeft--;
         timerDisplay.textContent = timeLeft;
@@ -129,43 +127,36 @@ function startGame() {
 
 function moveTarget3D() {
     if (!isPlaying) return;
-
-    // Generate coordinates on a safe X/Y grid window inside camera view
-    const boundsX = 5.5; 
-    const boundsY = 3.0; 
-
+    const boundsX = 4.5; 
+    const boundsY = 2.5; 
     const randomX = (Math.random() * 2 - 1) * boundsX;
     const randomY = (Math.random() * 2 - 1) * boundsY;
-    
     targetMesh.position.set(randomX, randomY, 0);
 }
 
 function applyTarget3DStyle() {
     const sizeSetting = sizeSelect.value;
     const scaleFactor = sizeMap[sizeSetting] || 1.1;
-    
-    // Scale the 3D Sphere geometry
     targetMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-    // Apply color options depending on what skin is chosen
     if (currentSkin === 'aqua') {
         targetMesh.material.color.setHex(0x00ffff);
     } else if (currentSkin === 'diamond') {
         targetMesh.material.color.setHex(0xaae8ff);
     } else {
-        targetMesh.material.color.setHex(0xff3366); // Default Red
+        targetMesh.material.color.setHex(0xff3366);
     }
 }
 
-// Raycaster check engine to translate mouse over 3D model
 function checkIntersections() {
+    if (!camera || !targetMesh) return false;
     raycaster.setFromCamera(mouse3D, camera);
     const intersects = raycaster.intersectObject(targetMesh);
     return intersects.length > 0;
 }
 
 function onMouseMove(event) {
-    // Math conversion mapping standard screen pixel arrays into 3D vectors
+    if (!renderer) return;
     const rect = renderer.domElement.getBoundingClientRect();
     mouse3D.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse3D.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -206,16 +197,14 @@ function endGame() {
     alert(`Game Over! You scored ${score} points and earned ${earnedCoins} AimCoins! 💰`);
 }
 
-// Handle window scaling or responsive adjustments
 window.addEventListener('resize', () => {
-    if(renderer && camera) {
+    if (renderer && camera) {
         renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
         camera.aspect = gameArea.clientWidth / gameArea.clientHeight;
         camera.updateProjectionMatrix();
     }
 });
 
-// Shop interface logic loops
 document.querySelectorAll('.equip-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         const skinName = e.target.getAttribute('data-skin');
@@ -224,7 +213,7 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
         if (ownedSkins.includes(skinName)) {
             currentSkin = skinName;
             updateShopUI();
-            if(isPlaying) applyTarget3DStyle();
+            if (isPlaying) applyTarget3DStyle();
         } else {
             if (coins >= cost) {
                 coins -= cost;
@@ -232,7 +221,7 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
                 ownedSkins.push(skinName);
                 currentSkin = skinName;
                 updateShopUI();
-                if(isPlaying) applyTarget3DStyle();
+                if (isPlaying) applyTarget3DStyle();
                 alert("Crosshair skin unlocked! Ready for action! 💎");
             } else {
                 alert("Not enough AimCoins! Keep practicing your drills.");
@@ -242,7 +231,6 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
 });
 
 function updateShopUI() {
-    // Update Crosshair Overlay Graphics engine class
     crosshair.className = `crosshair-skin-${currentSkin}`;
     if (currentSkin === 'default') crosshair.textContent = "+";
     if (currentSkin === 'aqua') crosshair.textContent = "◎";
