@@ -23,18 +23,19 @@ let ownedSkins = ['default'];
 
 // Three.js 3D Engine Setup Globals
 let scene, camera, renderer, targetMesh;
+let gunGroup, gunBarrel, muzzleFlash;
 let raycaster, mouse3D;
 let isHoveringTarget = false;
+let recoilActive = false;
+let recoilTimer = 0;
 
 const sizeMap = { 'large': 1.6, 'medium': 1.1, 'small': 0.6 };
 
-// Wait for the page to completely load before starting the 3D engine
 window.addEventListener('load', () => {
     if (typeof THREE !== 'undefined') {
         init3DEngine();
     } else {
-        console.error("Three.js library failed to load from the internet!");
-        alert("Error: 3D library could not load. Check your internet connection or reload the page.");
+        console.error("Three.js library failed to load!");
     }
 });
 
@@ -49,36 +50,93 @@ function init3DEngine() {
     renderer.setSize(gameArea.clientWidth, gameArea.clientHeight);
     gameArea.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0x00ffcc, 0.8);
+    const dirLight = new THREE.DirectionalLight(0x00ffcc, 0.9);
     dirLight.position.set(5, 10, 7);
     scene.add(dirLight);
 
+    // Target Sphere
     const geometry = new THREE.SphereGeometry(1, 32, 32);
     const material = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.3, metalness: 0.2 });
     targetMesh = new THREE.Mesh(geometry, material);
     targetMesh.visible = false; 
     scene.add(targetMesh);
 
+    // BUILD THE 3D HANDGUN STRUCTURE
+    createHandgun();
+
     raycaster = new THREE.Raycaster();
     mouse3D = new THREE.Vector2();
 
     gameArea.addEventListener('mousemove', onMouseMove);
     gameArea.addEventListener('mousedown', onMouseDown);
-
-    // Link the start button click event safely inside the engine setup
     startBtn.addEventListener('click', startGame);
 
     animate();
 }
 
+function createHandgun() {
+    gunGroup = new THREE.Group();
+
+    // Weapon Barrel Frame
+    const barrelGeo = new THREE.BoxGeometry(0.4, 0.4, 2.2);
+    const gunMat = new THREE.MeshStandardMaterial({ color: 0x24252a, roughness: 0.5, metalness: 0.8 });
+    gunBarrel = new THREE.Mesh(barrelGeo, gunMat);
+    gunBarrel.position.set(0, 0, -1.1);
+    gunGroup.add(gunBarrel);
+
+    // Weapon Grip Handle
+    const gripGeo = new THREE.BoxGeometry(0.35, 1.0, 0.5);
+    const grip = new THREE.Mesh(gripGeo, gunMat);
+    grip.position.set(0, -0.6, -0.2);
+    grip.rotation.x = -0.2; // Angle the handle nicely
+    gunGroup.add(grip);
+
+    // Muzzle Flash Particle
+    const flashGeo = new THREE.CylinderGeometry(0.0, 0.4, 0.8, 16);
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0 });
+    muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
+    muzzleFlash.position.set(0, 0, -2.6);
+    muzzleFlash.rotation.x = Math.PI / 2;
+    gunGroup.add(muzzleFlash);
+
+    // Lock weapon system positioning into bottom-right of viewport space
+    gunGroup.position.set(2.2, -1.8, 7);
+    scene.add(gunGroup);
+    gunGroup.visible = false; // Hide until play starts
+}
+
 function animate() {
     requestAnimationFrame(animate);
+    
     if (targetMesh && targetMesh.visible) {
         targetMesh.rotation.x += 0.01;
         targetMesh.rotation.y += 0.01;
     }
+
+    // Aim-Tracking Weapon Follow Engine
+    if (isPlaying && gunGroup) {
+        // Point weapon subtly toward the 3D target vectors map
+        const targetX = mouse3D.x * 4;
+        const targetY = mouse3D.y * 2.5;
+        
+        gunGroup.rotation.y = THREE.MathUtils.lerp(gunGroup.rotation.y, (targetX - gunGroup.position.x) * 0.12, 0.1);
+        gunGroup.rotation.x = THREE.MathUtils.lerp(gunGroup.rotation.x, -(targetY - gunGroup.position.y) * 0.12, 0.1);
+
+        // Recoil Kickback Mechanics Animation Loop
+        if (recoilActive) {
+            recoilTimer += 0.2;
+            gunGroup.position.z = 7 + Math.sin(recoilTimer) * 0.6; // Quick pop backwards
+            muzzleFlash.material.opacity = Math.max(0, 1 - recoilTimer);
+            if (recoilTimer >= Math.PI) {
+                recoilActive = false;
+                gunGroup.position.z = 7;
+                muzzleFlash.material.opacity = 0;
+            }
+        }
+    }
+    
     if (renderer && scene && camera) {
         renderer.render(scene, camera);
     }
@@ -94,6 +152,7 @@ function startGame() {
     startBtn.style.display = 'none';
     crosshair.style.display = 'block';
     targetMesh.visible = true;
+    gunGroup.visible = true;
     
     clearInterval(gameInterval);
     clearInterval(timerInterval);
@@ -115,7 +174,7 @@ function startGame() {
                 scoreDisplay.textContent = score;
                 if (score % 15 === 0) moveTarget3D();
             }
-        }, 1000 / 10);
+        }, 100);
     }
 
     timerInterval = setInterval(() => {
@@ -139,12 +198,16 @@ function applyTarget3DStyle() {
     const scaleFactor = sizeMap[sizeSetting] || 1.1;
     targetMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
+    // Dynamic Weapon Skin Color Modifiers
     if (currentSkin === 'aqua') {
         targetMesh.material.color.setHex(0x00ffff);
+        gunBarrel.material.color.setHex(0x005577); // Metallic Aqua Gun
     } else if (currentSkin === 'diamond') {
         targetMesh.material.color.setHex(0xaae8ff);
+        gunBarrel.material.color.setHex(0xd0f5ff); // Diamond wrap chrome steel
     } else {
         targetMesh.material.color.setHex(0xff3366);
+        gunBarrel.material.color.setHex(0x24252a); // Carbon default steel
     }
 }
 
@@ -168,8 +231,13 @@ function onMouseMove(event) {
 
 function onMouseDown() {
     if (!isPlaying) return;
-    const mode = modeSelect.value;
+    
+    // Trigger Weapon Recoil Kick and Flash
+    recoilActive = true;
+    recoilTimer = 0;
+    muzzleFlash.material.opacity = 1;
 
+    const mode = modeSelect.value;
     if (mode === 'classic' || mode === 'flick') {
         if (checkIntersections()) {
             score++;
@@ -186,6 +254,7 @@ function endGame() {
     clearInterval(trackingScoreInterval);
     
     targetMesh.visible = false;
+    gunGroup.visible = false;
     crosshair.style.display = 'none';
     startBtn.style.display = 'block';
     startBtn.textContent = 'PLAY AGAIN';
@@ -213,7 +282,7 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
         if (ownedSkins.includes(skinName)) {
             currentSkin = skinName;
             updateShopUI();
-            if (isPlaying) applyTarget3DStyle();
+            applyTarget3DStyle();
         } else {
             if (coins >= cost) {
                 coins -= cost;
@@ -221,20 +290,17 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
                 ownedSkins.push(skinName);
                 currentSkin = skinName;
                 updateShopUI();
-                if (isPlaying) applyTarget3DStyle();
-                alert("Crosshair skin unlocked! Ready for action! 💎");
+                applyTarget3DStyle();
+                alert("Skin unlocked! Weapon skin updated! 💎");
             } else {
-                alert("Not enough AimCoins! Keep practicing your drills.");
+                alert("Not enough AimCoins!");
             }
         }
     });
 });
 
 function updateShopUI() {
-    crosshair.className = `crosshair-skin-${currentSkin}`;
-    if (currentSkin === 'default') crosshair.textContent = "+";
-    if (currentSkin === 'aqua') crosshair.textContent = "◎";
-    if (currentSkin === 'diamond') crosshair.textContent = "✧";
+    crosshair.className = currentSkin === 'default' ? '' : `crosshair-skin-${currentSkin}`;
 
     document.querySelectorAll('.shop-item').forEach(item => {
         const btn = item.querySelector('.equip-btn');
@@ -242,13 +308,8 @@ function updateShopUI() {
 
         if (ownedSkins.includes(skinName)) {
             item.classList.add('owned');
-            if (currentSkin === skinName) {
-                btn.textContent = "Equipped";
-                btn.className = "equip-btn active";
-            } else {
-                btn.textContent = "Equip";
-                btn.className = "equip-btn";
-            }
+            btn.textContent = currentSkin === skinName ? "Equipped" : "Equip";
+            btn.className = currentSkin === skinName ? "equip-btn active" : "equip-btn";
         }
     });
 }
