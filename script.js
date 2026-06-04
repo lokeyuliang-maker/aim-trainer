@@ -68,7 +68,59 @@ function init3DEngine() {
     scene.add(targetMesh);
 
     // BUILD DETAILED MESH HANDGUN AND ARM EXTENSION
-    createHandgun();
+    function createHandgun() {
+    gunGroup = new THREE.Group();
+
+    // 1. Sleek, Skinny Pistol Slide (Made it thinner and longer)
+    const barrelGeo = new THREE.BoxGeometry(0.18, 0.3, 2.6);
+    const gunMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.8 });
+    gunBarrel = new THREE.Mesh(barrelGeo, gunMat);
+    gunBarrel.position.set(0, 0, -1.0);
+    gunGroup.add(gunBarrel);
+
+    // 2. Tactical Under-Barrel Laser Sight (Bright Neon Blue!)
+    const laserBoxGeo = new THREE.BoxGeometry(0.14, 0.14, 1.2);
+    const laserBoxMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const laserBox = new THREE.Mesh(laserBoxGeo, laserBoxMat);
+    laserBox.position.set(0, -0.2, -1.4);
+    gunGroup.add(laserBox);
+
+    const laserBeamGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.6, 8);
+    const laserBeamMat = new THREE.MeshBasicMaterial({ color: 0x00ffff }); // Neon Aqua Glow
+    const laserBeam = new THREE.Mesh(laserBeamGeo, laserBeamMat);
+    laserBeam.position.set(0, -0.2, -2.0);
+    laserBeam.rotation.x = Math.PI / 2;
+    gunGroup.add(laserBeam);
+
+    // 3. Slanted Handle Grip
+    const gripGeo = new THREE.BoxGeometry(0.16, 0.8, 0.4);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: 0.6 });
+    gunGrip = new THREE.Mesh(gripGeo, gripMat);
+    gunGrip.position.set(0, -0.5, -0.1);
+    gunGrip.rotation.x = -0.35; // Sharper angle for a tactical look
+    gunGroup.add(gunGrip);
+
+    // 4. Compact Tactical Glove Guard
+    const handGeo = new THREE.BoxGeometry(0.28, 0.35, 0.5);
+    const handMat = new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.5 });
+    const hand = new THREE.Mesh(handGeo, handMat);
+    hand.position.set(0, -0.4, 0.1);
+    gunGroup.add(hand);
+
+    // 5. Extended Forearm Player Sleeve (Tucked slightly lower)
+    const sleeveGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.8, 16);
+    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2e3038, roughness: 0.7 });
+    handSleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
+    handSleeve.position.set(0.2, -1.4, 1.2);
+    handSleeve.rotation.x = -Math.PI / 3.0; 
+    handSleeve.rotation.z = -0.1;
+    gunGroup.add(handSleeve);
+
+    // Perfect lower-right placement
+    gunGroup.position.set(2.4, -2.0, 7.5);
+    scene.add(gunGroup);
+    gunGroup.visible = false; 
+}
 
     raycaster = new THREE.Raycaster();
     mouse3D = new THREE.Vector2();
