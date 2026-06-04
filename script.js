@@ -2,7 +2,7 @@
 const gameArea = document.getElementById('game-area');
 const startBtn = document.getElementById('start-btn');
 const crosshair = document.getElementById('crosshair');
-const gunOverlay = document.getElementById('fps-gun-overlay');
+const weaponHud = document.getElementById('weapon-hud');
 const scoreDisplay = document.getElementById('score');
 const timerDisplay = document.getElementById('timer');
 const coinDisplay = document.getElementById('coin-balance');
@@ -33,13 +33,13 @@ window.addEventListener('load', () => {
     if (typeof THREE !== 'undefined') {
         init3DEngine();
     } else {
-        console.error("Three.js failed to load!");
+        console.error("Three.js library engine failed to execute!");
     }
 });
 
 function init3DEngine() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0f);
+    scene.background = new THREE.Color(0x09090d);
 
     camera = new THREE.PerspectiveCamera(60, gameArea.clientWidth / gameArea.clientHeight, 0.1, 1000);
     camera.position.z = 12;
@@ -54,7 +54,7 @@ function init3DEngine() {
     dirLight.position.set(5, 10, 7);
     scene.add(dirLight);
 
-    // Target Sphere
+    // Target Sphere Mesh
     const geometry = new THREE.SphereGeometry(1, 32, 32);
     const material = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.3, metalness: 0.2 });
     targetMesh = new THREE.Mesh(geometry, material);
@@ -93,7 +93,7 @@ function startGame() {
     
     startBtn.style.display = 'none';
     crosshair.style.display = 'block';
-    gunOverlay.style.display = 'block'; // Show the realistic weapon sprite
+    if (weaponHud) weaponHud.style.display = 'block'; // Activate HUD weapon graphics
     targetMesh.visible = true;
     
     clearInterval(gameInterval);
@@ -162,11 +162,11 @@ function onMouseMove(event) {
     mouse3D.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse3D.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // Smooth Gun Sway Follow Effect
-    if (isPlaying && gunOverlay) {
-        const moveX = mouse3D.x * 25; // Subtle lag movement left/right
-        const moveY = -mouse3D.y * 15;
-        gunOverlay.style.transform = `translate(${moveX}px, ${moveY}px)`;
+    // Advanced Input Lag Weapon Sway Simulation
+    if (isPlaying && weaponHud) {
+        const deltaX = mouse3D.x * 30; 
+        const deltaY = -mouse3D.y * 20;
+        weaponHud.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
     }
 
     if (isPlaying && modeSelect.value === 'tracking') {
@@ -177,11 +177,11 @@ function onMouseMove(event) {
 function onMouseDown() {
     if (!isPlaying) return;
     
-    // Trigger Recoil Animation
-    if (gunOverlay) {
-        gunOverlay.classList.remove('gun-recoil');
-        void gunOverlay.offsetWidth; // Reflow magic trick to reset animation
-        gunOverlay.classList.add('gun-recoil');
+    // Fire weapon recoil animation loop
+    if (weaponHud) {
+        weaponHud.classList.remove('weapon-recoil');
+        void weaponHud.offsetWidth; // Force asset refresh
+        weaponHud.classList.add('weapon-recoil');
     }
 
     const mode = modeSelect.value;
@@ -202,7 +202,7 @@ function endGame() {
     
     targetMesh.visible = false;
     crosshair.style.display = 'none';
-    gunOverlay.style.display = 'none'; // Hide weapon
+    if (weaponHud) weaponHud.style.display = 'none'; // Clear weapon graphics
     startBtn.style.display = 'block';
     startBtn.textContent = 'PLAY AGAIN';
 
@@ -238,7 +238,7 @@ document.querySelectorAll('.equip-btn').forEach(btn => {
                 currentSkin = skinName;
                 updateShopUI();
                 applyTarget3DStyle();
-                alert("Skin equipped!");
+                alert("Skin successfully loaded!");
             } else {
                 alert("Not enough AimCoins!");
             }
