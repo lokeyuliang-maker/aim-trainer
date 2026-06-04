@@ -135,6 +135,74 @@ function init3DEngine() {
 function createHandgun() {
     gunGroup = new THREE.Group();
 
+    // 1. Upper Receiver Rail (Dark Carbon Frame)
+    const upperGeo = new THREE.BoxGeometry(0.16, 0.2, 2.6);
+    const darkMetal = new THREE.MeshStandardMaterial({ color: 0x16161a, roughness: 0.2, metalness: 0.9 });
+    const upperRail = new THREE.Mesh(upperGeo, darkMetal);
+    upperRail.position.set(0, 0.1, -1.0);
+    gunGroup.add(upperRail);
+
+    // 2. Dual Glow Rails (Left & Right - Neon Cyan Plasma Channels)
+    const railGeo = new THREE.BoxGeometry(0.04, 0.12, 2.2);
+    const plasmaGlow = new THREE.MeshBasicMaterial({ color: 0x00ffcc }); // Bright Aqua Neon
+    
+    const leftRail = new THREE.Mesh(railGeo, plasmaGlow);
+    leftRail.position.set(0.09, 0, -1.1);
+    gunGroup.add(leftRail);
+
+    const rightRail = new THREE.Mesh(railGeo, plasmaGlow);
+    rightRail.position.set(-0.09, 0, -1.1);
+    gunGroup.add(rightRail);
+
+    // 3. Lower Core Barrel (Sleek Chrome)
+    const coreGeo = new THREE.CylinderGeometry(0.05, 0.05, 2.5, 12);
+    const chromeMetal = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.1, metalness: 1.0 });
+    const coreBarrel = new THREE.Mesh(coreGeo, chromeMetal);
+    coreBarrel.rotation.x = Math.PI / 2;
+    coreBarrel.position.set(0, -0.05, -1.15);
+    gunGroup.add(coreBarrel);
+
+    // 4. Muzzle Brake Cap (Aggressive Tip)
+    const tipGeo = new THREE.CylinderGeometry(0.07, 0.08, 0.3, 12);
+    const tip = new THREE.Mesh(tipGeo, darkMetal);
+    tip.rotation.x = Math.PI / 2;
+    tip.position.set(0, -0.05, -2.4);
+    gunGroup.add(tip);
+
+    // 5. Slanted Ergonomic Grip Handle
+    const gripGeo = new THREE.BoxGeometry(0.14, 0.75, 0.35);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x08080a, roughness: 0.8 });
+    gunGrip = new THREE.Mesh(gripGeo, gripMat);
+    gunGrip.position.set(0, -0.45, -0.1);
+    gunGrip.rotation.x = -0.4; // Sharp ergonomic racing angle
+    gunGroup.add(gunGrip);
+
+    // 6. Tactical Poly Glove Guard
+    const handGeo = new THREE.BoxGeometry(0.24, 0.35, 0.45);
+    const handMat = new THREE.MeshStandardMaterial({ color: 0x222327, roughness: 0.5 });
+    const hand = new THREE.Mesh(handGeo, handMat);
+    hand.position.set(0, -0.38, 0.1);
+    gunGroup.add(hand);
+
+    // 7. Swept-Forward Arm Sleeve Connection
+    const sleeveGeo = new THREE.CylinderGeometry(0.22, 0.32, 2.6, 16);
+    const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x2b2d35, roughness: 0.6 });
+    handSleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
+    handSleeve.position.set(0.18, -1.3, 1.1);
+    handSleeve.rotation.x = -Math.PI / 3.0;
+    handSleeve.rotation.z = -0.08;
+    gunGroup.add(handSleeve);
+
+    // Dynamic Viewport Alignment placement
+    gunGroup.position.set(2.4, -2.0, 7.5);
+    scene.add(gunGroup);
+    gunGroup.visible = false; 
+
+    // Keep global link assigned for the skin coloring functions
+    gunBarrel = upperRail; 
+}
+    gunGroup = new THREE.Group();
+
     // 1. Main Realistic Pistol Slide/Barrel Frame
     const barrelGeo = new THREE.BoxGeometry(0.35, 0.5, 2.4);
     const gunMat = new THREE.MeshStandardMaterial({ color: 0x1f2026, roughness: 0.4, metalness: 0.8 });
@@ -170,7 +238,7 @@ function createHandgun() {
     gunGroup.position.set(2.2, -1.9, 7.5);
     scene.add(gunGroup);
     gunGroup.visible = false; 
-}
+
 
 function animate() {
     requestAnimationFrame(animate);
